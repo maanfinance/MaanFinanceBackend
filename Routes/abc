@@ -1,0 +1,285 @@
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import {
+  Box,
+  Grid,
+  Heading,
+  Text,
+  VStack,
+  useDisclosure,
+  Modal,
+  Button,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  Img
+} from "@chakra-ui/react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { BsFillArrowLeftCircleFill } from "react-icons/bs";
+const SingleUserPage = () => {
+  const [user, setUser] = useState(null);
+  const [installment, setInstallment] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Use an array of objects to store the state for each box
+  const [installmentStates, setInstallmentStates] = useState([]);
+  const [userData1, setUserData1] = useState(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const { id } = useParams();
+
+  // Get the user ID from the URL params
+
+  useEffect(() => {
+    fetchUser(id);
+  }, [id]);
+
+  const fetchUser = async (id) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8001/userinfo/users/${id}`
+      );
+
+      setUser(response.data);
+      setUserData(response.data.allInstallments);
+      setInstallment(response.data.customerTotalDays);
+      setLoading(false);
+
+      // Initialize the state for each box when user data is fetched
+      const initialStates = Array.from(
+        { length: response.data.customerTotalDays },
+        () => ({ isPaid: false })
+      );
+      setInstallmentStates(initialStates);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+    }
+  };
+
+  useEffect(() => {
+    // Fetch data when the component mounts
+    fetchData(id);
+  }, [id]);
+
+  const fetchData = async (id) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8001/userinfo/totalInstallment/${id}`
+      );
+      setTotal(response.data.total);
+      setUserData1(response.data.data);
+      fetchUser(id);
+      fetchData(id);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  const generateBoxNumbers = () => {
+    return Array.from({ length: installment }, (_, index) => index + 1);
+  };
+
+  if (!user) {
+    return <Text>Loading...</Text>;
+  }
+
+  const handleTogglePayment = (index) => {
+    // Use the index to identify the box whose state needs to be updated
+    setInstallmentStates((prevStates) => {
+      const updatedStates = [...prevStates];
+      updatedStates[index].isPaid = !updatedStates[index].isPaid;
+      return updatedStates;
+    });
+  };
+  const getCurrentDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleUpdatePaidStatus = async (objectId) => {
+    try {
+      const response = await axios.patch(
+        `http://localhost:8001/userinfo/installment/${id}`,
+        {
+          _id: objectId,
+          paid: "true",
+          date: getCurrentDate(),
+        }
+      );
+      console.log(response.data);
+
+      // Fetch the updated user data after successfully updating the installment status
+      fetchUser(id);
+    } catch (error) {
+      console.error("Error updating data:", error);
+    }
+  };
+
+  const handleStatusUpdate = async () => {
+    try {
+      // Send PATCH request to update the status from false to true
+      await axios.put(`http://localhost:8001/userinfo/users/${id}`, {
+        status: "true",
+      });
+
+      // After the successful update, close the modal
+      onClose();
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
+  };
+
+  return (
+    <>
+      <Text>
+        <Link to="/alluser">
+          <BsFillArrowLeftCircleFill size={30} />
+        </Link>
+      </Text>
+      <Grid templateColumns="30% 70%" gap={4} p={8}>
+        <Box p={8}>
+          {/* Customer Information */}
+          <VStack spacing={4} alignItems="left">
+            <Heading>{user.customerName}</Heading>
+
+            <Img
+                  src={user.userImage}
+                  alt={user.customerName}
+                  style={{ maxWidth: "100px" }}
+                /> 
+            <Text>Customer ID:  <Img
+                  src={user.customerId}
+                  alt={user.customerName}
+                  style={{ maxWidth: "100px" }}
+                /></Text>
+            <Text>Customer Phone: {user.customerPhone}</Text>
+            <Text>
+              Customer Alternate Number: {user.customerAlternateNumber}
+            </Text>
+            <Text>Customer Total Amount: {user.customerTotalAmount}</Text>
+            <Text>
+              Customer Installement Per Month:{" "}
+              {user.customerInstallementPerMonth}
+            </Text>
+            <Text>Customer Total Days: {user.customerTotalDays}</Text>
+            <Text>
+              Customer Permanent Address: {user.customerPermanentAddress}
+            </Text>
+            <Text>Customer Current Address: {user.customerCurrentAddress}</Text>
+            <Text>Customer Shop Address: {user.customerShopAddress}</Text>
+          </VStack>
+          <br />
+          {/* Reference Information */}
+          <VStack spacing={4} alignItems="left">
+            <Text fontWeight="bold">Reference Name: {user.refName}</Text>
+            <Text>Reference ID:<Img
+                  src={user.refId}
+                  alt={user.refName}
+                  style={{ maxWidth: "100px" }}
+                /> </Text>
+            <Text>Reference Phone: {user.refPhone}</Text>
+            <Text>Reference Alternate Number: {user.refAlternateNumber}</Text>
+            <Text>Reference Permanent Address: {user.refPermanentAddress}</Text>
+            <Text>Reference Current Address: {user.refCurrentAddress}</Text>
+            <Text>Reference Shop Address: {user.refShopAddress}</Text>
+          </VStack>
+          <br />
+          <VStack spacing={4} alignItems="left">
+            <Heading>Amount</Heading>
+            <Text>
+              Customer Installement Per Month:{" "}
+              {user.customerInstallementPerMonth}
+            </Text>
+            <Text>
+              Total Amount:
+              {user.customerTotalAmount}
+            </Text>
+
+            <Text>
+              Total Amount with Installementa:
+              {user.customerwithInstallmentTotalAmount}
+            </Text>
+
+            <Text>
+              Amount Left:
+              {user.customerAmountpendding}
+            </Text>
+
+            <Text>
+              Total Installment Amount Per Day:
+              {user.customerInstallementPerMonth}
+            </Text>
+            <Text>Total Installment :{user.customerTotalDays}</Text>
+
+            <Text>Complete Installment:{total}</Text>
+            <Text>Left Installment:{user.customerTotalDays - total}</Text>
+            <Text>Amount Paid:{user.customerAmountpaid}</Text>
+          </VStack>
+        </Box>
+        <Box p={8} border={"1px solid blue"} borderRadius={"10px"}>
+          <Heading>Total Installments</Heading>
+          <Grid templateColumns={`repeat(3, 1fr)`} gap={4}>
+            {userData.map((item, i) => (
+              <Box
+                key={item._id}
+                borderRadius={"10px"}
+                backgroundColor={"#589ba1"}
+                p={"10px"}
+              >
+                <Box color={"white"}>{i + 1}</Box>
+                <p>Amount: {item.amount}</p>
+                <p>Date: {item.date}</p>
+                {item.paid === "false" ? (
+                  <button
+                    onClick={() => handleUpdatePaidStatus(item._id)}
+                    style={{ backgroundColor: "green", color: "white" }}
+                  >
+                    Call
+                  </button>
+                ) : (
+                  <button
+                  
+                    style={{ backgroundColor: "red", color: "white" }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </Box>
+            ))}
+          </Grid>
+        </Box>
+      </Grid>
+      <Button  onClick={onOpen}
+      
+                    colorScheme={user.status === "true" ? "green" : "red"}
+                  >
+                    {user.status === "true" ? "Completed Installements" : "Incomplete Installments"}
+       </Button>
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Update Status</ModalHeader>
+          <ModalBody>
+            Are you sure you want to update the status to true?
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={handleStatusUpdate}>
+              Yes
+            </Button>
+            <Button onClick={onClose}>Cancel</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      
+    </>
+  );
+};
+
+export default SingleUserPage;
