@@ -8,7 +8,7 @@ require('dotenv').config()
 // module.exports={connect}
 
 const mongoose = require('mongoose');
-
+mongoose.set('strictQuery', false)
 // const dbURI = 'your_mongodb_uri_here'; // Replace with your actual MongoDB URI
 
 mongoose.connect(process.env.mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true });
